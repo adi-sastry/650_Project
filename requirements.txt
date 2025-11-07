@@ -1,0 +1,12 @@
+# Core dependencies for Cloud Computing Project
+boto3==1.34.97           # AWS SDK for Python (for IAM, S3, etc.)
+botocore==1.34.97        # Low-level AWS service data (required by boto3)
+PyYAML==6.0.2            # For reading and writing YAML config files
+
+# Optional (recommended) utilities
+requests==2.31.0         # For any HTTP API calls if needed
+tqdm==4.66.4             # For progress bars/logging during uploads
+opencv-Python
+pillow
+ultralytics==8.0.134
+sagemaker==2.172.0

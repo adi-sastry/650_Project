@@ -47,7 +47,7 @@ def main():
    cfg['CAMERA_TRAP']['user_name'],
    cfg['CAMERA_TRAP']['allow_delete'])
  
- iam_client = pr.get_iam_client()
+ _,iam_client = pr.get_s3_iam_client()
 
  pr.attach_policy_user(
    iam_client,ct_policy_arn, 

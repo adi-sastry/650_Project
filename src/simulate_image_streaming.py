@@ -4,8 +4,22 @@ import random
 import boto3
 import pandas as pd
 
+def aws_auth(cfg='aws_auth.yaml'):
+    import yaml
+    with open(cfg, 'r') as f:
+        aws_config = yaml.safe_load(f)
+    return aws_config['aws']
+
+def client():
+    creds = aws_auth()
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=creds['access_key_id'],
+        aws_secret_access_key=creds['secret_access_key'],
+        region_name=creds['region'])
+    return s3
 def simulation(ROOT_DIRECTORY, BUCKET_NAME, VALIDATION_METATA):
-    s3 =boto3.client("s3")
+    s3 =client()
     
     #Crawling through Images and extracting Occurence ID and Directory into Dataframe
     image_info = []
