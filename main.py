@@ -36,6 +36,8 @@ def main():
  #----------------------------Provisioning Resources----------------------------#   
  print("Begining creation of AWS Reaources...\n")
 
+###### Stage 1 Resources #########
+
  #Provisioning from-camera-trap S3 Bucket and Policy
  pr.create_s3_bucket(cfg['CAMERA_TRAP']['bucket_name'], 
                      cfg['CAMERA_TRAP']['region'])
@@ -52,6 +54,28 @@ def main():
    cfg['CAMERA_TRAP']['user_name'])
  
  print(f"Bucket {cfg['CAMERA_TRAP']['bucket_name']} and policy {ct_policy_arn} created successfully.\n")
+
+ #Creating dynamoDB table to store metadata of upload (timestamp, file_name, processed flag)
+ attribute_definitions  = [
+    {"AttributeName":attr["attributeName"], "AttributeType": attr["attributeType"]}
+    for attr in cfg['IMG_EVENT_TBL']['attr_def']
+  ]
+ Key_schema  = [
+    {"AttributeName": key["attributeName"], "KeyType": key["keyType"]}
+    for key in cfg['IMG_EVENT_TBL']['key_schema']
+  ]
+ pr.create_database(cfg['IMG_EVENT_TBL']['table_name'],attribute_definitions, Key_schema)
+ 
+ #Setting up EventBridge
+ ##IngestionLoggger
+ 
+ ## BatchNotifier
+ lambda_iam_arn= pr.create_iam_lambda_role()
+ function_arn=pr.deploy_lambda_batch_notifier(lambda_iam_arn)
+ rule = pr.create_eventBridge_rule("BatchNotifierRule", "rate(5 minutes)")
+ pr.give_eventBridge_permission("BatchNotifierRule", "EventBridgeInvoke", "lambda:InvokeFunction","events.amazonaws.com", rule)
+ pr.attach_lambda_targets(rule, function_arn)
+
 
 #----------------------------Begin Simulation----------------------------#
 
