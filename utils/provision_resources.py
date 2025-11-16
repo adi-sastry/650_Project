@@ -21,7 +21,7 @@ def get_aws_client(service_name: str):
     )
 
 def create_s3_bucket(bucket_name:str, region:str= "us-east-1")-> None:
-    s3,_ = get_aws_client("s3")
+    s3 = get_aws_client("s3")
 
     print(f"Creating S3 bucket: {bucket_name}")
     if region == "us-east-1":
@@ -90,6 +90,7 @@ def create_image_camera_trap_policy_for_bucket(bucket_name: str, user_name:str, 
 
     return create_iam_policy(iam, policy_name, user_name, policy_doc, f"Read/write access to {bucket_name}")
 
+# Create DynamoDB Database
 def create_database(table_name, attribute_def, key_schema):
     dynamodb = get_aws_client("dynamodb")
 
@@ -99,78 +100,7 @@ def create_database(table_name, attribute_def, key_schema):
         KeySchema=key_schema,
         BillingMode = "PAY_PER_REQUEST"
     )
-
-def create_eventBridge_rule(name, rate):
-    events_client = get_aws_client("events")
-
-    rule = events_client.put_rule(
-        Name=name,
-        ScheduleExpression=rate,
-        State="ENABLED"
-    )
-    
-    return rule
-
-def give_eventBridge_permission(lambda_func_name, statement_id, action, principal, rule):
-    lambda_client = get_aws_client("lambda")
-    lambda_client.add_permission(
-        FunctionName=lambda_func_name,
-        StatementId=statement_id,
-        Action=action,
-        Principal=principal,
-        SourceArn=rule["RuleArn"]
-    )
-
-def attach_lambda_targets(rule_name, func_arn):
-    events_client = get_aws_client("events")
-    events_client.put_targets(
-        Rule = rule_name,
-        Targets= [
-            {
-                "Id": "Target0",
-                "Arn": func_arn
-            }
-        ]
-    )
-
-def deploy_lambda_ingestion_logger(role_arn):
-    lambda_client = get_aws_client("lambda")
-
-    with open("ingestion_logger.zip", "rb") as f:
-        zipped_code = f.read()
-    
-    response = lambda_client.create_function(
-        FunctionName="IngestionLogger",
-        Runtime="python3.11",
-        Role=role_arn,
-        Handler="ingestion_logger.lambda_handler",
-        Code={"ZipFile": zipped_code},
-        Timeout=30,
-        MemorySize=128
-    )
-
-    print(response)
-    return(response['FunctionName'],response['FunctionArn'])
-
-def deploy_lambda_batch_notifier(role_arn):
-    lambda_client = get_aws_client("lambda")
-
-    with open("batch_notifier.zip", "rb") as f:
-        zipped_code = f.read()
-    
-    response = lambda_client.create_function(
-        FunctionName="BatchNotifier",
-        Runtime="python3.11",
-        Role=role_arn,
-        Handler="batch_notifier.lambda_handler",
-        Code={"ZipFile": zipped_code},
-        Timeout=30,
-        MemorySize=128
-    )
-
-    print(response)
-    return(response['FunctionName'],response['FunctionArn'])
-
+# Creates a Role for executing Lambda Functions
 def create_iam_lambda_role(iam_client):
     trust_policy = {
         "Version": "2012-10-17",
@@ -196,42 +126,220 @@ def create_iam_lambda_role(iam_client):
         "arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess",
         "arn:aws:iam::aws:policy/AmazonSNSFullAccess"
         ]
+    
+    # Attaches policies above to new lambda role
     for policy_arn in policies:
         iam_client.attach_role_policy(RoleName=role_name, PolicyArn=policy_arn)
-        time.sleep(1)
+        time.sleep(15)
 
-    wait_for_iam_role_propagation(iam_client,role_name, timeout=120)
+    #wait_for_iam_role_propagation(iam_client,role_name, timeout=120)
+    
     
     role_arn = response["Role"]["Arn"]
+    wait_for_role_assumable()
+
+
     print(f"Role ready: {role_arn}")
     return role_arn
 
-def wait_for_iam_role_propagation(iam_client, role_name, timeout=120, delay =10):
-    print(f"Waiting for IAM role '{role_name}' propagation...")
-    sts = get_aws_client('sts')
-    account_id = sts.get_caller_identity()['Account']
-    role_arn = f"arn:aws:iam::{account_id}:role/{role_name}"
+# Function that waits for role to become fully assumable to actually deploy lambdas. Creates a fake function to test against
+def wait_for_role_assumable(timeout=120, delay=5):
+    lambda_client = get_aws_client("lambda")
+    start = time.time()
 
-    start_time = time.time()
-    while time.time() - start_time < timeout:
+    print(f"Waiting for role to become assumable by Lambda...")
+    fake_function = "FakeLambdaRoleAssumeTest"
+
+    while time.time() - start < timeout:
         try:
-            sts.assume_role(
-                RoleArn = role_arn,
-                RoleSessionName="test-lambda-assume"
-            )
-
-            print(f"Role '{role_name}' is now assumable by Lambda!")
-            time.sleep(5)
-            return
-        except ClientError as e:
-            error_code = e.response['Error']['Code']
-            if error_code == 'AccessDenied':
-                print("  Still propagating... (AccessDenied)")
-            elif error_code == 'NoSuchEntity':
-                print("  Role not found yet...")
+            lambda_client.get_function(FunctionName=fake_function)
+        except lambda_client.exceptions.ResourceNotFoundException:
+            # This triggers Lambda's trust-policy check internally
+            try:
+                lambda_client.get_function_configuration(FunctionName=fake_function)
+            except lambda_client.exceptions.ResourceNotFoundException:
+                # Role is actually assumable (meaning trust policy OK), function just doesn't exist
+                print("Role is assumable by Lambda.")
+                return
+            except lambda_client.exceptions.InvalidParameterValueException as e:
+                if "cannot be assumed" in str(e):
+                    print("Role not yet assumable, waiting...")
+                else:
+                    print("Role assumable (other error).")
+                    return
+        except lambda_client.exceptions.InvalidParameterValueException as e:
+            if "cannot be assumed" in str(e):
+                print("Role not yet assumable, waiting...")
             else:
-                print(f"  STS error [{error_code}]: {e}")
+                print("Role assumable (other error).")
+                return
         except Exception as e:
-            print(f"  Unexpected error: {e}")   
+            print(f"Unexpected error: {e}")
+            # assuming role is ready if we hit unknown errors
+            return
         time.sleep(delay)
-    raise RuntimeError(f"Role '{role_name}' did not become assumable after {timeout} seconds")
+    raise TimeoutError("Role did not become assumable by Lambda")
+
+# attaches PassRole to current user so that they can pass the lambda execution role to other AWS services.
+# Done using an inline polcy so that it is embedded in the current user
+def attach_passrole_policy(user_name: str):
+    iam= get_aws_client("iam")
+    sts= get_aws_client("sts")
+
+    #Getting account ID and region
+    account_id = sts.get_caller_identity()["Account"]
+    region = load_aws_credentials()['region']
+
+    policy_document = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+        "Effect": "Allow",
+        "Action": [
+            "iam:CreateRole",
+            "iam:AttachRolePolicy",
+            "iam:GetRole",
+            "iam:PassRole",
+            "sts:AssumeRole" 
+        ],
+        "Resource": f"arn:aws:iam::{account_id}:role/lambda-execution-role"
+        },
+        {
+        "Effect": "Allow",
+        "Action": [
+            "lambda:CreateFunction",
+            "lambda:UpdateFunctionConfiguration",
+            "lambda:InvokeFunction"
+        ],
+        "Resource": f"arn:aws:lambda:{region}:{account_id}:function/*"
+        }
+    ]
+    }
+
+    try:
+        iam.put_user_policy(
+            UserName=user_name,
+            PolicyName='LambdaRoleCreationPolicy',
+            PolicyDocument=json.dumps(policy_document)
+        )
+        print(f"Attached in-line policy 'LambdaRoleCreationPolicy' to user: {user_name}")
+    except ClientError as e:
+        print(f"Failed to attach policy: {e}")
+
+# Deploys Ingestion Logger Lambda Function for Stage 1
+# logs the ingestion of images into S3 into a database
+def deploy_lambda_ingestion_logger(role_arn):
+    lambda_client = get_aws_client("lambda")
+
+    with open("ingestion_logger.zip", "rb") as f:
+        zipped_code = f.read()
+    
+    response = lambda_client.create_function(
+        FunctionName="IngestionLogger",
+        Runtime="python3.12",
+        Role=role_arn,
+        Handler="ingestion_logger.lambda_handler",
+        Code={"ZipFile": zipped_code},
+        Timeout=30,
+        MemorySize=128
+    )
+
+    print(response)
+    return(response['FunctionName'],response['FunctionArn'])
+
+def create_s3_lambda_trigger(bucket_name, function_arn, function_name):
+    s3 = get_aws_client("s3")
+    sts =get_aws_client("sts")
+    account_id = sts.get_caller_identity()["Account"]
+    lambda_client = get_aws_client("lambda")
+
+    lambda_client.add_permission(
+        FunctionName=function_name,
+        StatementId=f"S3InvokePermission",
+        Action="lambda:InvokeFunction",
+        Principal="s3.amazonaws.com",
+        SourceArn=f"arn:aws:s3:::{bucket_name}",
+        SourceAccount=account_id
+    )
+    
+    time.sleep(5)
+    
+    notification_config = {
+        "LambdaFunctionConfigurations": [
+            {
+                "LambdaFunctionArn": function_arn,
+                "Events": ["s3:ObjectCreated:*"]
+            }
+        ]
+    }
+
+    s3.put_bucket_notification_configuration(
+        Bucket=bucket_name,
+        NotificationConfiguration=notification_config
+    )
+    print(f"S3 bucket {bucket_name} is now configured to invoke Lambda '{function_name}'")
+
+
+# Deploys Batch notifier Lambda Function for Stage 1
+# Notifies users the images that were uploaded to bucket within a 5 min window
+def deploy_lambda_batch_notifier(role_arn):
+    lambda_client = get_aws_client("lambda")
+
+    with open("batch_notifier.zip", "rb") as f:
+        zipped_code = f.read()
+    
+    response = lambda_client.create_function(
+        FunctionName="BatchNotifier",
+        Runtime="python3.12",
+        Role=role_arn,
+        Handler="batch_notifier.lambda_handler",
+        Code={"ZipFile": zipped_code},
+        Timeout=30,
+        MemorySize=128
+    )
+
+    print(response)
+    return(response['FunctionName'],response['FunctionArn'])
+
+#Creates EventBridge Rule
+def create_eventBridge_rule(name, rate):
+    events_client = get_aws_client("events")
+
+    rule = events_client.put_rule(
+        Name=name,
+        ScheduleExpression=rate,
+        State="ENABLED"
+    )
+    
+    return rule
+
+#Gives the EventBridge Rile permissions to invoke a Lambda function
+def give_eventBridge_permission(lambda_func_name, statement_id, action, principal, rule):
+    lambda_client = get_aws_client("lambda")
+    lambda_client.add_permission(
+        FunctionName=lambda_func_name,
+        StatementId=statement_id,
+        Action=action,
+        Principal=principal,
+        SourceArn=rule["RuleArn"]
+    )
+
+# Attaches the lambda target to the EventBridge Rule
+def attach_lambda_targets(rule_name, func_arn):
+    events_client = get_aws_client("events")
+    events_client.put_targets(
+        Rule = rule_name,
+        Targets= [
+            {
+                "Id": "Target0",
+                "Arn": func_arn
+            }
+        ]
+    )
+
+
+
+
+
+
+
