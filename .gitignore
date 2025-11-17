@@ -210,7 +210,4 @@ __marimo__/
 data/
 temp/
 
-_yaml
-yaml
-pyyaml-6.0.3.dist-info
 aws_auth.yaml

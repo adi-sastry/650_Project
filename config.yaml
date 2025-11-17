@@ -1,6 +1,7 @@
 USER_INFO:
   user_name: 'admin'
   region: 'us-east-1'
+  email: 'asastry@umd.edu'
 
 
 CAMERA_TRAP:

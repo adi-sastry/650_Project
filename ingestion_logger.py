@@ -1,28 +1,19 @@
 import json
 import boto3
 import uuid
-import yaml
 import time
+import os
 import logging
 
 #Setting up logger
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
-#loading config to get table name
-try:
-    with open("config.yaml", "r") as f:
-        config = yaml.safe_load(f)
-    logger.info("Config loaded successfully")
-except Exception as e:
-    logger.error(f"Failed  to load config.yaml:{e}")
-    raise e
-
 #Creating Dynamodb client
 try:
     dynamodb=boto3.resource("dynamodb")
-    table=dynamodb.Table(config['IMG_EVENT_TBL']['table_name'])
-    logger.info(f"DynamoDB successfully pointing to: {config['IMG_EVENT_TBL']['table_name']}")
+    table = dynamodb.Table(os.environ["TABLE_NAME"])    
+    logger.info(f"DynamoDB successfully pointing to: {table}")
 except Exception as e:
     logger.error(f"Failed to initialize DynamoDB table: {e}")
     raise e
