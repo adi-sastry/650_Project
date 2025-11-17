@@ -1,7 +1,7 @@
 USER_INFO:
   user_name: 'admin'
   region: 'us-east-1'
-  email: 'asastry@umd.edu'
+  email: '<INSERT EMAIL FOR SNS>'
 
 
 CAMERA_TRAP:
