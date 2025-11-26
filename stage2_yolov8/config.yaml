@@ -1,0 +1,26 @@
+# stage2_yolov8/config.yaml
+
+aws:
+  region: us-east-1           # change if needed
+  profile: default            # or null if using env vars / instance role
+
+s3:
+  bucket: from-camera-trap
+  images_prefix: images/     # folder containing images
+
+dynamodb:
+  table_name: CameraTrapDetections  # create this table manually once:
+                                    # PK: image_name (string), SK: timestamp (string) or omit SK
+
+sagemaker:
+  role_arn: 'arn:aws:iam::681414095658:role/service-role/AmazonSageMakerAdminIAMExecutionRole'   
+  endpoint_name: yolov8-camera-trap-endpoint
+  instance_type: ml.m5.large
+  framework_version: "2.1"
+  py_version: "py310"
+  model_data_s3: "s3://from-camera-trap/model-artifacts/model.tar.gz"
+
+io:
+  images_csv: data/images.csv          # will be created by create_images_csv.py
+  max_images: null                     # or an integer like 100 to limit for testing
+  score_threshold: 0.25                # filter low-confidence detections

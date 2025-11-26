@@ -3,6 +3,7 @@ import json
 import time
 import yaml
 from botocore.exceptions import ClientError
+from read_yaml import read_yaml
 #Create S3 Bucket Function
 
 def load_aws_credentials(config_path: str= 'aws_auth.yaml') -> dict:
