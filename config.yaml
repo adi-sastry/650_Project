@@ -1,7 +1,21 @@
-CAMERA_TRAP:
-  bucket_name: 'from-camera-trap'
+USER_INFO:
+  user_name: 'admin'
   region: 'us-east-1'
-  user_name: 'prakhar_ml650'
+  email: '<INSERT EMAIL FOR SNS>'
+
+
+CAMERA_TRAP:
+  bucket_name: 'from-camera-trap-1'
   allow_delete: True
   root_dir: './data/images/species_validate/acinonyx_jubatus'
   val_meta: './data/obs_and_meta/processed/felids_validation.csv'
+
+
+IMG_EVENT_TBL:
+  table_name: 'image_event'
+  attr_def:
+    - attributeName: "event_id"
+      attributeType: "S"
+  key_schema:
+    - attributeName: "event_id"
+      keyType: "HASH"
