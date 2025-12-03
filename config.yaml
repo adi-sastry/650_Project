@@ -1,7 +1,7 @@
 USER_INFO:
-  user_name: 'adi-sastry'
+  user_name: '<USER_NAME>'
   region: 'us-east-1'
-  email: 'aditya.m.sastry@gmail.com'
+  email: '<EMAIL>'
 
 
 CAMERA_TRAP:
