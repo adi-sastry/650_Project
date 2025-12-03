@@ -302,6 +302,28 @@ def add_email_to_sns(topic_arn, email_address):
 
     print(f"Email subscription created. Account holder of {email_address} must confirm subscription")
 
+def deploy_lambda_image_event_classifier(role_arn, table_name):
+    lambda_client = get_aws_client("lambda")
+
+    with open("image_event_classifier.zip", "rb") as f:
+        zipped_code = f.read()
+    
+    response = lambda_client.create_function(
+        FunctionName="ImageEventClassifier",
+        Runtime="python3.12",
+        Role=role_arn,
+        Handler="image_event_classifier.lambda_handler",
+        Code={"ZipFile": zipped_code},
+        Timeout=30,
+        MemorySize=128,
+        Environment ={
+            "Variables": {
+                "TABLE_NAME": table_name,
+                "ENDPOINT_NAME": 1
+            }
+        }
+        )
+
 # Deploys Batch notifier Lambda Function for Stage 1
 # Notifies users the images that were uploaded to bucket within a 5 min window
 

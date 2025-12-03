@@ -41,7 +41,7 @@ This contains PDFs of written project deliverables such as the project Proposal 
 ### utils
 1. **download_dataset.py** downloads the Spatiotemporal Wildlfe Dataset from Kaggle using its API. *Ensure you have generated your kaggle API token before running anything!*
 2. **provision_resources.py** contains all the function used to provision AWS resources required for all five stages of the architecture.
-3. **clean_up.py** contains all functions used to "clean up" after ourselves after resources have been provisioned. As we are using the Free-tier of AWS, this ensures that we are not charged for extended use of provisioned resources
+3. **clean_up.py** contains all functions usved to "clean up" after ourselves after resources have been provisioned. As we are using the Free-tier of AWS, this ensures that we are not charged for extended use of provisioned resources
 ### config.yaml
 This config file is used to populate different parameters in variables within `main()`. **NOTE:** `USER_INFO` *must be filled out with **your** user name, region, and preferred email for SNS notifications*
 ### main
@@ -50,4 +50,8 @@ Contains all function calls in the logical order to provision resources and run 
 1. **Generate Kaggle API Token** - If you haven't done so yet, go to Kaggle and create a new API token to ensure the dataset can be downloaded. This should download a `kaggle.json` file. Ensure the Kaggle CLI is installed (`pip install kaggle`). Make a new folder in your under your user profile called **.kaggle** (if windows: `mkdir <insert-user-profile>\.kaggle`).
 2. **Create AWS Authentication .yaml** Create a .yaml file and name it `aws_auth.yaml`. This file will be used within our scripts to authenticate and utilize the AWS CLI and boto3. Be sure to add your `access_key_id`, `secret_key_id`, and `region`. It is not in our seen in our repo as it is mentioned in our `.gitignore`.
 3. **Adjust User information in config.yaml** - in `config.yaml`, adjust the `USER_INFO`, to be your user name, region, and preferred email for SNS notifications.
-4. **Run main()** - Now that you have completed the steps above, you should be able to run `main()` to provison resources and run the simulation! **NOTE**: If you want resources to be cleaned up after the simulation completes, ensure that `delete_resources` is not commented out.
+4. In the AWS Console Check that images from previous runs are deleted from the from-camera-trap-1 S3 bucket and that all **items** are deleted from image_even DynamoDB table. If you don't delete them, you may have duplicate results. DO NOT DELTE THE image_event TABLE ITSELF JUST THE ITEMS
+5.  In Amazon EventBridge --> Rules, ensure the following rules are endabled: BatchNotifierRule, IngestionLoggerRule, and CreateGeoJSON.
+6. In Amazon SageMaker AI go to Deployments & Inference --> Endpoints --> Create Endpoint. Make sure the Endpoint name is "yolov8s". For Enddpoint Configuration choose "yolov8-prod-config" (DO NOT PICK SERVERLESS). Press Create Endpoint and wait for a couple of minutes for the endpoint to be created.
+7. **Run main()** - Now that you have completed the steps above, you should be able to run `main()` to run the simulation! 
+8. **IMPORTANT** After you are done testing the pipeline, go back to mazon SageMaker AI go to Deployments & Inference --> Endpoints and delete the endpoint you created. This is a provisioned sagemaker endpoint so it cost money to leave up an running. **Be sure to delete it after you are done with your viewing or testing of the pipeline**. ENSURE YOU LEAVE ENDPOINT CONFIGURATIONS AND DEPLOYABLE MODELS AS IS. DO NOT TOUCH.
