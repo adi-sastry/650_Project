@@ -48,13 +48,15 @@ def simulation(ROOT_DIRECTORY, BUCKET_NAME, VALIDATION_METATA):
 
         #Metadata fields to be sent over to S3
         metadata = {
-            'lat': str(row['latitude']),
-            'long': str(row['longitude']),
-            'positional_accuracy': str(row['positional_accuracy']),
-            'temperature': str(row['temperature_2m']),
-            'elevation': str(row['elevation']),
-            'time': str(row['time'])
-        }
+    'lat': str(row.get('latitude', '')),
+    'long': str(row.get('longitude', '')),
+    'positional_accuracy': str(row.get('positional_accuracy', '')),
+    'observed_on': str(row.get('observed_on', '')),
+    'local_time_observed_at': str(row.get('local_time_observed_at', '')),
+    'scientific_name': str(row.get('scientific_name', '')),
+    'common_name': str(row.get('common_name', ''))
+}
+
 
         #simulating upload failures and retries
         retries = 3
@@ -78,5 +80,11 @@ def simulation(ROOT_DIRECTORY, BUCKET_NAME, VALIDATION_METATA):
                     time.sleep(1)  # wait before retrying
                 else:
                     print(f"Failed to upload {file_name} after {retries} attempts")        
+if __name__ == "__main__":
+    ROOT_DIRECTORY = "data/spatiotemporal-wildlife-dataset/images"
+    BUCKET_NAME = "from-camera-trap-1"
+    VALIDATION_METATA = "data/spatiotemporal-wildlife-dataset/bonus/observations_mammalia_global.csv"
+
+    simulation(ROOT_DIRECTORY, BUCKET_NAME, VALIDATION_METATA)
 
 
