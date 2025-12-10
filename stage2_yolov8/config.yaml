@@ -5,12 +5,12 @@ aws:
   profile: default            # or null if using env vars / instance role
 
 s3:
-  bucket: from-camera-trap
+  bucket: from-camera-trap-1
   images_prefix: images/     # folder containing images
 
 dynamodb:
-  table_name: CameraTrapDetections  # create this table manually once:
-                                    # PK: image_name (string), SK: timestamp (string) or omit SK
+  table_name: image_event
+
 
 sagemaker:
   role_arn: 'arn:aws:iam::744032442669:role/sagemaker-execution-role'   
@@ -22,5 +22,5 @@ sagemaker:
 
 io:
   images_csv: data/images.csv          # will be created by create_images_csv.py
-  max_images: null                     # or an integer like 100 to limit for testing
+  max_images: 100                    # or an integer like 100 to limit for testing
   score_threshold: 0.25                # filter low-confidence detections

@@ -55,8 +55,19 @@ def lambda_handler(event, context):
     flat_features =[]
     for item in results:
         event_id = item["event_id"]
-        lat = float(item["lat"])
-        lon = float(item["long"])
+        lat_raw = item.get("lat")
+        lon_raw = item.get("long")
+
+        if not lat_raw or not lon_raw:
+            logger.warning(f"Skipping event_id {event_id} — missing coordinates.")
+            continue
+
+        try:
+            lat = float(lat_raw)
+            lon = float(lon_raw)
+        except Exception:
+            logger.warning(f"Skipping event_id {event_id} — invalid format: lat={lat_raw}, lon={lon_raw}")
+            continue
 
         predictions = item.get("predictions",[])
         
@@ -81,19 +92,41 @@ def lambda_handler(event, context):
                 "latitude" : lat,
                 "longitude" : lon
             })
+    # Convert flat_features to GeoJSON FeatureCollection
+    geojson = {
+        "type": "FeatureCollection",
+        "features": [
+            {
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [f["longitude"], f["latitude"]]
+                },
+                "properties": {
+                    "event_id": f["event_id"],
+                    "class": f["class"],
+                    "confidence": f["confidence"]
+                }
+            }
+            for f in flat_features
+        ]
+    }
     s3.put_object(
-        Bucket = S3_BUCKET,
-        Key = S3_KEY,
-        Body = json.dumps(flat_features),
-        ContentType="application/json"
+        Bucket=S3_BUCKET,
+        Key="wildlife_predictions.geojson",
+        Body=json.dumps(geojson),
+        ContentType="application/geo+json"
     )
-            
-    logger.info(f"{len(flat_features)} rows written to s3://{S3_BUCKET}/{S3_KEY}.")
+
+    logger.info(
+        f"GeoJSON written: {len(geojson['features'])} features → "
+        f"s3://{S3_BUCKET}/wildlife_predictions.geojson"
+    )
 
     return {
         "statusCode": 200,
-        "body": json.dumps({"message": f"Written {len(flat_features)} rows to S3"})
+        "body": json.dumps(
+            {"message": f"GeoJSON created with {len(geojson['features'])} features"}
+        )
     }
-
-       
        

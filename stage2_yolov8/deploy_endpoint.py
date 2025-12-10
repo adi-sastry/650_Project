@@ -22,7 +22,8 @@ def deploy_model (cfg, auth):
     framework_version = cfg["sagemaker"]["framework_version"]
     py_version = cfg["sagemaker"]["py_version"]
     instance_type = cfg["sagemaker"]["instance_type"]
-    entry_point ="inference.py"
+    entry_point="Model/inference.py"
+
 
     session = make_session(auth)
     sm_session =sagemaker.Session(boto_session=session)

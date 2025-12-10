@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Wildlife Predictions Map</title>
+  <meta charset="utf-8" />
+
+  <!-- Leaflet Map Library -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    #map {
+      height: 100vh;
+      width: 100%;
+    }
+  </style>
+</head>
+<body>
+
+<h2 style="text-align:center;">Wildlife Detection Map (YOLO Predictions)</h2>
+<div id="map"></div>
+
+<script>
+// Create Map
+const map = L.map('map').setView([0, 0], 2);
+
+// Add Base Layer
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+}).addTo(map);
+
+// S3 GeoJSON File
+const GEOJSON_URL = "https://artifacts-for-report.s3.amazonaws.com/wildlife_predictions.geojson";
+
+// Load GeoJSON
+fetch(GEOJSON_URL)
+  .then(response => response.json())
+  .then(data => {
+    L.geoJSON(data, {
+      pointToLayer: function(feature, latlng) {
+        return L.circleMarker(latlng, {
+          radius: 5,          
+          fillColor: "black", 
+          color: "black",        
+          weight: 3,
+          opacity: 0.7,
+          fillOpacity: 0.7
+        });
+      },
+
+      onEachFeature: function (feature, layer) {
+          const props = feature.properties;
+
+          const cls = props.class ? props.class : "—";
+          const conf = (props.confidence !== null && props.confidence !== undefined)
+              ? Number(props.confidence).toFixed(3)
+              : "—";
+
+          const popupHTML = `
+              <div style="font-family: Arial; font-size: 13px; line-height: 1.4;">
+                  <b style="font-size: 14px;">Wildlife Detection</b><br><br>
+                  <b>Species:</b> ${cls}<br>
+                  <b>Confidence:</b> ${conf}<br>
+                  <b>Event ID:</b> ${props.event_id}
+              </div>
+    `     ;
+
+        layer.bindPopup(popupHTML);
+      }
+
+    }).addTo(map);
+  })
+  .catch(err => console.error("Failed to load GeoJSON:", err));
+
+</script>
+
+</body>
+</html>

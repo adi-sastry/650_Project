@@ -12,3 +12,6 @@ kaggle.api.dataset_download_files('travisdaws/spatiotemporal-wildlife-dataset', 
 #Making Marker file to check if user ran this script before running main()
 with open(os.path.join(data_folder, ".download_complete"), "w") as f:
     f.write("done")
+
+
+
