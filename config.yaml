@@ -1,7 +1,7 @@
 USER_INFO:
-  user_name: '<USER_NAME>'
+  user_name: '<INSERT USER NAME>'
   region: 'us-east-1'
-  email: '<EMAIL>'
+  email: '<INSERT PREFERED EMAIL>'
 
 
 CAMERA_TRAP:

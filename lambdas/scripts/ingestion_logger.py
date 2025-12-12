@@ -32,7 +32,7 @@ def lambda_handler(event, context):
     
     if "Records" not in event:
         logger.warning("No Records found in event")
-        return {"statusCode": 400, "body": "No records to process"}
+        return {"statusCode": 400, "body": "No records were found in event to process."}
     
     for record in event["Records"]:
         try:
@@ -49,13 +49,14 @@ def lambda_handler(event, context):
                 logger.error(f"Failed to retrieve metadata for {key}: {e}")
                 metadata = {}
             
+            #Metadata extraction into item dict to be inserted into dynamo db
             item={
                     "event_id": str(uuid.uuid4()),
                     "bucket_name": bucket,
                     "object_key": key,
                     "time_stamp": int(time.time()),
                     
-                    #S3 Object Metadata
+                    #Metadata data fields sent over with images from simulation
                     "lat":metadata.get("lat"),
                     "long":metadata.get("long"),
                     "positional_accuracy":metadata.get("positional_accuracy"),
@@ -71,8 +72,8 @@ def lambda_handler(event, context):
                 }
             
             table.put_item(Item=item)
-            logger.info(f"Inserted item into DynamoDB: {item}")
+            logger.info(f"Inserted the following item into DynamoDB: {item}")
         except Exception as e:
-            logger.error(f"Failed to process record {record}: {e}")
+            logger.error(f"Failed to process the following record {record}: {e}")
     logger.info("Ingestion Logger Lambda function execution completed")
     return {"statusCode": 200}

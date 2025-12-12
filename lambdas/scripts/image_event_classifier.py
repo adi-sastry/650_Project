@@ -13,7 +13,7 @@ logger.setLevel(logging.INFO)
 ENDPOINT_NAME = os.environ['ENDPOINT_NAME']
 TABLE_NAME = os.environ['DYNAMODB_TABLE']
 
-# DynamoDB does not suppor native float types, but supports Number type via Decimal from decimal module
+# DynamoDB does not suppor native float types, but supports Number (N) type via Decimal from decimal module
 def convert_floats_to_decimal(obj):
     if isinstance(obj,list):
         return[convert_floats_to_decimal(i)for i in obj]
@@ -52,13 +52,14 @@ except Exception as e:
 
 def lambda_handler(event, context):
     for record in event['Records']:
+        # iterates through records and skips DB events that are not INSERTS or MODIFY
         event_name = record["eventName"]
         if event_name not in ("INSERT", "MODIFY"):
             logger.info(f"Not a INSERT or MODIFY event. Skipping: {record['eventName']}")
             continue
         try:
+            #Skips image if it has already been classified
             new_image = record["dynamodb"]["NewImage"]
-            
             if new_image.get("classification_complete", {}).get("BOOL") is True:
                 continue
 
@@ -68,22 +69,23 @@ def lambda_handler(event, context):
 
             logger.info(f"Processing DDB insert/modification: event_id={event_id}, s3://{bucket}/{key}")
 
+            #fetching image from camera trap s3 bucket
             try:
                 obj = s3.get_object(Bucket=bucket, Key=key)
                 image_bytes = obj['Body'].read()
                 logger.info("Successfully read image from S3")
             except Exception as e:
                 logger.error(f"Failed reading image from S3: {e}")
-                # continuing to process other images
+                # continuing to process other records
                 continue
 
 
-            #Call Sagemaker
+            #images are encoded as base64 as payload for sagemaker
             try:
                 payload = {"image":base64.b64encode(image_bytes).decode("utf-8")}
                 logger.info(f"Payload sample: {str(payload)[:100]}")
 
-
+                #invoke sagemaker endpoint
                 response = sagemaker.invoke_endpoint(
                 EndpointName =ENDPOINT_NAME,
                 ContentType="application/json",
@@ -94,7 +96,7 @@ def lambda_handler(event, context):
                 logger.error(f"Error invoking SageMaker endpoint: {e}")
                 continue
 
-            # Parsing YOLO response
+            # Parsing YOLO response from sagemaker endpoint
             try:
                 response_body = response['Body'].read().decode('utf-8')
                 logger.info(f"SageMaker raw response: {response_body}")
@@ -112,7 +114,7 @@ def lambda_handler(event, context):
                 logger.error(f"Failed to parse YOLO response: {e}")
                 continue
 
-            #Updating DynamoDB
+            #Converts float predictions to decimal for dynamoDB & updates records with classification results
             predictions_decimal = convert_floats_to_decimal(predictions)
             try:
                 table.update_item(

@@ -8,25 +8,47 @@
 
 </div>
 
-# Motivation & Problem Statement
-
-As inhabitants of Earth, we have long observed numerous changes affecting our planet.  Warmer temperatures, rising sea levels, and extreme weather events are becoming more prevalent. However, we must not forget that we are not the only species being impacted. Since the 1970s, thousands of wildlife populations and Earth’s overall biodiversity have declined due to these environmental changes, as well as human-driven activities such as deforestation, urban development, and pollution (Ritchie, 2022).
-
-Conserving all of Earth’s biodiversity is essential to our survival. Wildlife supports healthy and resilient ecosystems, which in turn sustain human health (Shaw, 2024). One of the most effective ways to support biodiversity conservation is by understanding where species live and how they are distributed. This knowledge allows us to identify key habitats for protection and support resource management (NatureServe).
-
-Species distribution data often comes from occurrence records, which can be captured using edge devices such as trail cameras. However, these devices often have limitations with storage capacity and vulnerability to data loss through damage or tampering.  Latency is another major concern, as significant events could go unnoticed for days (Yu, 2024). These events might include rare wildlife behavior or the presence of poachers and other anthropogenic threats to wildlife.
-
-To ensure all data is reliably captured and available to support species distribution, conservation planning, and protection, a more robust and resilient data pipeline must be established. Therefore, we are proposing a cloud-based pipeline that facilitates the ingestion and offloading of data from edge-devices, such as trail cameras, for wildlife or threat detection, analytics, and visualization.
-
-# High-Level Approach & Architecture
-
-## Stage 1: Simulted Ingestion
-## Stage 2: Data Processing & Object Detection
-## Stage 3: Alerts & Notifications
-## Stage 4: Storage & Metadata Management
-## Stage 5 : Visualization & Analysis
-
 # How To Use
+1. **Generate Kaggle API Token** - If you haven't done so yet, go to Kaggle and create a new API token to ensure the dataset can be downloaded. This should download a `kaggle.json` file. Ensure the Kaggle CLI is installed (`pip install kaggle`). Make a new folder in your under your user profile called **.kaggle** (if windows: `mkdir <insert-user-profile>\.kaggle`). Link to Kaggle Dataset: [Spatiotemporal Wildlife Dataset]("https://www.kaggle.com/datasets/travisdaws/spatiotemporal-wildlife-dataset?resource=download&select=images"). In `config.yaml`, it will be pointing to images for a small set of images for the African Forest Elephant (loxodonta cyclotis) for testing at first. If you want to try a larger set of images, you can switch the folder to point to images for the African Bush Elephant (loxodonta africana).
+
+2. **Edit AWS Authentication .yaml** - Edit the (or create your own)  `aws.yaml` file. This file will be used within our scripts to authenticate and utilize the AWS CLI and boto3. Be sure to add your `access_key_id`, `secret_key_id`, and `region`. Access keys to the project_reviewer user will be attached to our report.
+
+<pre>
+aws:
+  access_key_id: INSERT YOUR ACCESS KEY ID
+  secret_access_key: "INSERT YOUR SECRET ACCESS KEY ID"
+  region: "us-east-1" # <- or whatever region you are in
+</pre>
+
+3. **Adjust User information in config.yaml** - in `config.yaml`, adjust the `USER_INFO`, to be your user name, region, and preferred email for SNS notifications.
+<pre>
+USER_INFO:
+  user_name: 'INSERT AWS USER NAME'
+  region: 'us-east-1'
+  email: 'INSERT PREFERED EMAIL ADDRESS'
+
+</pre>
+
+4. **Getting Console Ready** - In the AWS Console Check that images from previous runs are deleted from the from-camera-trap-1 S3 bucket and that all **items** are deleted from image_event DynamoDB table. If you don't delete them, you may have duplicate results. DO **NOT** DELETE THE image_event TABLE ITSELF JUST THE ITEMS.
+
+5.  In Amazon EventBridge --> Rules, ensure the following rules are **endabled**: BatchNotifierRule, IngestionLoggerRule, and CreateGeoJSON.
+
+6. In Amazon SageMaker AI, Under "Deployments & Inference" --> Endpoints --> Create Endpoint. Name the Endpoint "yolov8s". For Enddpoint Configuration choose "yolov8-prod-config" (DO NOT PICK SERVERLESS). Press Create Endpoint and wait for a couple of minutes for the endpoint to be created.
+
+7. **Run main()** - Now that you have completed the steps above, you should be able to run `main()` to run the simulation! You will get a email to confirm your SNS subscription. Accept it so you can get notifications of image uploads and classifications.
+
+8. **Viewing Results** - As the script runs, you should be able to see the following:
+  - from-camera-trap-1 S3 bucket fill up with images from dataset. Each image will have associated metadata.
+  - DynamoDB will be populating with extracted metadata and prediction results from Yolov8s
+  - Notifications will be sent to the email used in `config.yaml`
+  - artifacts-for-report will have two files:
+    - `wildlife_predictions_FLATTENED.json` -> this is use for QuickSight/Power BI to ingest the longitudes and latitudes of where images were taken. Ideally, it would have been in QuickSight, as we were having access issues we pivoted to Power BI. A Power BI file of result will be includd in repo to download and view within your own PowerBI desktop application. Will also include an image of resulting report in the repo.
+    - `wildlife_predictions.geojson` -> this used for a web map
+
+
+9. **IMPORTANT - Clean Up** - After you are done testing the pipeline, go back to Amazon SageMaker AI go to Deployments & Inference --> Endpoints and delete the endpoint you created. This is a provisioned sagemaker endpoint so it cost money to leave up an running. **Be sure to delete it after you are done with your viewing or testing of the pipeline**. ENSURE YOU LEAVE ENDPOINT CONFIGURATIONS AND DEPLOYABLE MODELS AS IS. DO NOT TOUCH.
+
+
 
 ## File Structure & Scripts
 
@@ -47,11 +69,4 @@ This config file is used to populate different parameters in variables within `m
 ### main
 Contains all function calls in the logical order to provision resources and run the simulation. If you would like the resources to be deleted after the program runs, then you must ensure `delete_resources` is not commented out.
 ## How to Use
-1. **Generate Kaggle API Token** - If you haven't done so yet, go to Kaggle and create a new API token to ensure the dataset can be downloaded. This should download a `kaggle.json` file. Ensure the Kaggle CLI is installed (`pip install kaggle`). Make a new folder in your under your user profile called **.kaggle** (if windows: `mkdir <insert-user-profile>\.kaggle`).
-2. **Create AWS Authentication .yaml** Create a .yaml file and name it `aws_auth.yaml`. This file will be used within our scripts to authenticate and utilize the AWS CLI and boto3. Be sure to add your `access_key_id`, `secret_key_id`, and `region`. It is not in our seen in our repo as it is mentioned in our `.gitignore`.
-3. **Adjust User information in config.yaml** - in `config.yaml`, adjust the `USER_INFO`, to be your user name, region, and preferred email for SNS notifications.
-4. In the AWS Console Check that images from previous runs are deleted from the from-camera-trap-1 S3 bucket and that all **items** are deleted from image_even DynamoDB table. If you don't delete them, you may have duplicate results. DO NOT DELTE THE image_event TABLE ITSELF JUST THE ITEMS
-5.  In Amazon EventBridge --> Rules, ensure the following rules are endabled: BatchNotifierRule, IngestionLoggerRule, and CreateGeoJSON.
-6. In Amazon SageMaker AI go to Deployments & Inference --> Endpoints --> Create Endpoint. Make sure the Endpoint name is "yolov8s". For Enddpoint Configuration choose "yolov8-prod-config" (DO NOT PICK SERVERLESS). Press Create Endpoint and wait for a couple of minutes for the endpoint to be created.
-7. **Run main()** - Now that you have completed the steps above, you should be able to run `main()` to run the simulation! 
-8. **IMPORTANT** After you are done testing the pipeline, go back to mazon SageMaker AI go to Deployments & Inference --> Endpoints and delete the endpoint you created. This is a provisioned sagemaker endpoint so it cost money to leave up an running. **Be sure to delete it after you are done with your viewing or testing of the pipeline**. ENSURE YOU LEAVE ENDPOINT CONFIGURATIONS AND DEPLOYABLE MODELS AS IS. DO NOT TOUCH.
+

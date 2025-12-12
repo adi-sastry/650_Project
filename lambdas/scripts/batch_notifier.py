@@ -30,21 +30,23 @@ def lambda_handler(event, context):
 
     table_name = os.environ["TABLE_NAME"]
     sns_topic_arn = os.environ["SNS_TOPIC_ARN"]
-    logger.info(f"Using DynamoDB table: {table_name}")
+    logger.info(f"Point to DynamoDB table: {table_name}")
     logger.info(f"SNS Topic ARN: {sns_topic_arn}")
     
     try:
         table = dynamodb.Table(table_name)
         logger.info(f"DynamoDB successfully pointing to: {table}")
     except Exception as e:
-        logger.error(f"Failed to initialize DynamoDB table: {e}", exc_info=True)
+        logger.error(f"Failed to point to DynamoDB {table_name} table: {e}", exc_info=True)
         raise e
 
     try:
+        #setting  5-min window lookback
         now = int(time.time())
         five_min_ago = now - 300
         logger.info(f"Scanning for unprocessed items since timestamp >= {five_min_ago} ({time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(five_min_ago))} UTC)")
 
+        #Query for for records
         filter_expression = Or(
             Attr("processed").eq(False),
             (Attr("classification_complete").eq(True) & Attr("notify_pending").eq(True))
@@ -60,7 +62,7 @@ def lambda_handler(event, context):
         logger.error(f"Intital scan failed: {e}")
         raise e
 
-    # Scanning for more images within 5 minute window
+    # Continuing sacn for more matching items
     while "LastEvaluatedKey" in response:
         try:
             logger.info("Continuing scan for more items...")
@@ -80,26 +82,27 @@ def lambda_handler(event, context):
         return {"statusCode": 200}
     logger.info(f"Total unprocessed items found: {len(items)}")
     
-    #Creates message to account for images uploaded within 5 min window
-    upload_lines = []
-    classified_lines = []
+    #Creates message to account for images uploaded and classified within 5 min window
+    uploaded_images_lines = []
+    classified_images_lines = []
 
     for i in items:
         line = f"  - {i['bucket_name']}/{i['object_key']}"
         if i.get("classification_complete") and "predictions" in i:
             line += f" | Predictions: {i['predictions']}"
         if i.get("processed") is False:
-            upload_lines.append(line)
+            uploaded_images_lines.append(line)
         if i.get("classification_complete") and i.get("notify_pending"):
-            classified_lines.append(line)
+            classified_images_lines.append(line)
     
+    # setting up lines in email
     message_lines = []
-    if upload_lines:
-        message_lines.append(f"New uploads ({len(upload_lines)} images):")
-        message_lines.extend(upload_lines)
-    if classified_lines:
-        message_lines.append(f"\nNewly classified images ({len(classified_lines)} images):")
-        message_lines.extend(classified_lines)
+    if uploaded_images_lines:
+        message_lines.append(f"New uploads ({len(uploaded_images_lines)} images):")
+        message_lines.extend(uploaded_images_lines)
+    if classified_images_lines:
+        message_lines.append(f"\nNewly classified images ({len(classified_images_lines)} images):")
+        message_lines.extend(classified_images_lines)
         
     message = "\n".join(message_lines)
     logger.info("SNS message prepared:")

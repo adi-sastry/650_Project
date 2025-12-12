@@ -27,8 +27,8 @@ def main():
  #----------------------------Begin Simulation----------------------------#
 
  #Simulation of streaming camera trap data directly into from-camera-trap s3 Bucket. These are images from validation set from data folder.
- topic_arn = pr.create_sns_topic("ImageIngestionTopic") # Commented this out becuase I already created topic after running once
- pr.add_email_to_sns(topic_arn,cfg['USER_INFO']['email'])
+ #topic_arn = pr.create_sns_topic("ImageIngestionTopic") # Commented this out becuase I already created topic after running once
+ #pr.add_email_to_sns(topic_arn,cfg['USER_INFO']['email'])
  print("Begining simulation of images from camera trap...\n")
  simulate_image_streaming.simulation(cfg['CAMERA_TRAP']['root_dir'], cfg['CAMERA_TRAP']['bucket_name'], cfg['CAMERA_TRAP']['val_meta'])
  
