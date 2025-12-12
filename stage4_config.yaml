@@ -1,0 +1,160 @@
+# Stage 4 Configuration
+# Storage & Metadata Management settings
+
+DETECTION_RESULTS_TABLE:
+  table_name: 'detection_results'
+  
+  # Throughput settings (use provisioned for cost control)
+  billing_mode: 'PROVISIONED'  # or 'PAY_PER_REQUEST'
+  read_capacity: 5
+  write_capacity: 5
+  
+  # Auto-scaling settings
+  autoscaling:
+    enabled: True
+    min_capacity: 5
+    max_capacity: 100
+    target_utilization: 70
+  
+  # Global Secondary Indexes
+  indexes:
+    - name: 'image_name-timestamp-index'
+      type: 'GSI'
+    - name: 'species-timestamp-index'
+      type: 'GSI'
+    - name: 'camera_id-timestamp-index'
+      type: 'GSI'
+    - name: 'confidence_level-timestamp-index'
+      type: 'GSI'
+    - name: 'geo_hash-timestamp-index'
+      type: 'GSI'
+  
+  # Stream settings (for real-time processing)
+  stream:
+    enabled: True
+    view_type: 'NEW_AND_OLD_IMAGES'
+  
+  # Backup settings
+  point_in_time_recovery: True
+  continuous_backup: True
+
+ENHANCED_IMAGE_EVENT_TABLE:
+  table_name: 'image_event'
+  
+  # Additional indexes for Stage 4
+  new_indexes:
+    - name: 'bucket_name-time_stamp-index'
+      type: 'GSI'
+    - name: 'processed-time_stamp-index'
+      type: 'GSI'
+    - name: 'camera_id-time_stamp-index'
+      type: 'GSI'
+
+METADATA_ENRICHMENT:
+  # What metadata to extract from S3
+  extract_from_s3:
+    - file_size_bytes
+    - content_type
+    - last_modified
+    - etag
+  
+  # Environmental metadata fields
+  environmental_fields:
+    - latitude
+    - longitude
+    - temperature
+    - elevation
+    - positional_accuracy
+    - capture_time
+  
+  # Camera metadata
+  camera_fields:
+    - camera_id
+    - camera_model
+    - firmware_version
+  
+  # Detection metadata
+  detection_fields:
+    - species
+    - confidence
+    - bbox
+    - detection_count
+
+QUERY_SETTINGS:
+  # Default limits for queries
+  default_limit: 100
+  max_limit: 10000
+  
+  # Pagination settings
+  page_size: 50
+  
+  # Cache settings (if using caching layer)
+  cache_ttl: 300  # seconds
+  
+  # Geographic precision
+  geohash_precision: 4
+
+STORAGE_LIFECYCLE:
+  # S3 lifecycle rules
+  s3_lifecycle:
+    transition_to_glacier_days: 90
+    transition_to_deep_archive_days: 365
+    expire_days: 730
+  
+  # DynamoDB TTL (if needed)
+  dynamodb_ttl:
+    enabled: False
+    attribute_name: 'expiration_time'
+    retention_days: 730
+
+CONFIDENCE_THRESHOLDS:
+  high: 0.8
+  medium: 0.5
+  low: 0.0
+
+PROCESSING:
+  # Batch processing settings
+  batch_size: 10
+  concurrent_requests: 5
+  retry_attempts: 3
+  retry_delay: 1  # seconds
+  
+  # Score threshold for filtering
+  min_confidence: 0.25
+  
+  # SageMaker endpoint settings
+  endpoint_timeout: 30  # seconds
+  
+EXPORT:
+  # CSV export settings
+  csv_delimiter: ','
+  csv_encoding: 'utf-8'
+  include_headers: True
+  
+  # JSON export settings
+  json_pretty_print: True
+  json_indent: 2
+
+ANALYTICS:
+  # Time periods for trend analysis
+  trend_periods:
+    - 'daily'
+    - 'weekly'
+    - 'monthly'
+  
+  # Rare species threshold
+  rare_species_threshold: 5
+  
+  # Statistical analysis
+  enable_statistics: True
+  calculate_trends: True
+
+ALERTS:
+  # Alert thresholds
+  rare_species_alert: True
+  high_confidence_threshold: 0.95
+  low_confidence_review_threshold: 0.4
+  
+  # Notification settings
+  enable_notifications: True
+  notification_batch_size: 10
