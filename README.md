@@ -11,7 +11,9 @@
 # How To Use
 1. **Generate Kaggle API Token** - If you haven't done so yet, go to Kaggle and create a new API token to ensure the dataset can be downloaded. This should download a `kaggle.json` file. Ensure the Kaggle CLI is installed (`pip install kaggle`). Make a new folder in your under your user profile called **.kaggle** (if windows: `mkdir <insert-user-profile>\.kaggle`). Link to Kaggle Dataset: [Spatiotemporal Wildlife Dataset]("https://www.kaggle.com/datasets/travisdaws/spatiotemporal-wildlife-dataset?resource=download&select=images"). In `config.yaml`, it will be pointing to images for a small set of images for the African Forest Elephant (loxodonta cyclotis) for testing at first. If you want to try a larger set of images, you can switch the folder to point to images for the African Bush Elephant (loxodonta africana). Once Your token has been set up. Run download_dataset.py under the utils folder. This will download the dataset
 
-2. **Edit AWS Authentication .yaml** - Edit the (or create your own)  `aws.yaml` file. This file will be used within our scripts to authenticate and utilize the AWS CLI and boto3. Be sure to add your `access_key_id`, `secret_key_id`, and `region`. Access keys to the project_reviewer user will be attached to our final submission.
+https://www.kaggle.com/datasets/travisdaws/spatiotemporal-wildlife-dataset?resource=download&select=images
+
+3. **Edit AWS Authentication .yaml** - Edit the (or create your own)  `aws.yaml` file. This file will be used within our scripts to authenticate and utilize the AWS CLI and boto3. Be sure to add your `access_key_id`, `secret_key_id`, and `region`. Access keys to the project_reviewer user will be attached to our final submission.
 
 <pre>
 aws:
@@ -47,6 +49,7 @@ USER_INFO:
 
 
 9. **IMPORTANT - Clean Up** - After you are done testing the pipeline, go back to Amazon SageMaker AI go to Deployments & Inference --> Endpoints and delete the endpoint you created. This is a provisioned sagemaker endpoint so it cost money to leave up an running. **Be sure to delete it after you are done with your viewing or testing of the pipeline**. ENSURE YOU LEAVE ENDPOINT CONFIGURATIONS AND DEPLOYABLE MODELS AS IS. DO NOT TOUCH.
+
 
 
 
