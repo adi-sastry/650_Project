@@ -9,9 +9,9 @@
 </div>
 
 # How To Use
-1. **Generate Kaggle API Token** - If you haven't done so yet, go to Kaggle and create a new API token to ensure the dataset can be downloaded. This should download a `kaggle.json` file. Ensure the Kaggle CLI is installed (`pip install kaggle`). Make a new folder in your under your user profile called **.kaggle** (if windows: `mkdir <insert-user-profile>\.kaggle`). Link to Kaggle Dataset: [Spatiotemporal Wildlife Dataset]("https://www.kaggle.com/datasets/travisdaws/spatiotemporal-wildlife-dataset?resource=download&select=images"). In `config.yaml`, it will be pointing to images for a small set of images for the African Forest Elephant (loxodonta cyclotis) for testing at first. If you want to try a larger set of images, you can switch the folder to point to images for the African Bush Elephant (loxodonta africana).
+1. **Generate Kaggle API Token** - If you haven't done so yet, go to Kaggle and create a new API token to ensure the dataset can be downloaded. This should download a `kaggle.json` file. Ensure the Kaggle CLI is installed (`pip install kaggle`). Make a new folder in your under your user profile called **.kaggle** (if windows: `mkdir <insert-user-profile>\.kaggle`). Link to Kaggle Dataset: [Spatiotemporal Wildlife Dataset]("https://www.kaggle.com/datasets/travisdaws/spatiotemporal-wildlife-dataset?resource=download&select=images"). In `config.yaml`, it will be pointing to images for a small set of images for the African Forest Elephant (loxodonta cyclotis) for testing at first. If you want to try a larger set of images, you can switch the folder to point to images for the African Bush Elephant (loxodonta africana). Once Your token has been set up. Run download_dataset.py under the utils folder. This will download the dataset
 
-2. **Edit AWS Authentication .yaml** - Edit the (or create your own)  `aws.yaml` file. This file will be used within our scripts to authenticate and utilize the AWS CLI and boto3. Be sure to add your `access_key_id`, `secret_key_id`, and `region`. Access keys to the project_reviewer user will be attached to our report.
+2. **Edit AWS Authentication .yaml** - Edit the (or create your own)  `aws.yaml` file. This file will be used within our scripts to authenticate and utilize the AWS CLI and boto3. Be sure to add your `access_key_id`, `secret_key_id`, and `region`. Access keys to the project_reviewer user will be attached to our final submission.
 
 <pre>
 aws:
@@ -20,7 +20,7 @@ aws:
   region: "us-east-1" # <- or whatever region you are in
 </pre>
 
-3. **Adjust User information in config.yaml** - in `config.yaml`, adjust the `USER_INFO`, to be your user name, region, and preferred email for SNS notifications.
+3. **Adjust User information in config.yaml** - in `config.yaml`, adjust the `USER_INFO`, to be your user name of the given account (project_reviewer), region, and preferred email for SNS notifications.
 <pre>
 USER_INFO:
   user_name: 'INSERT AWS USER NAME'
@@ -48,25 +48,4 @@ USER_INFO:
 
 9. **IMPORTANT - Clean Up** - After you are done testing the pipeline, go back to Amazon SageMaker AI go to Deployments & Inference --> Endpoints and delete the endpoint you created. This is a provisioned sagemaker endpoint so it cost money to leave up an running. **Be sure to delete it after you are done with your viewing or testing of the pipeline**. ENSURE YOU LEAVE ENDPOINT CONFIGURATIONS AND DEPLOYABLE MODELS AS IS. DO NOT TOUCH.
 
-
-
-## File Structure & Scripts
-
-### Model
-This contains files and scripts related to Object Detection using Yolov8.
-
-### src
-1. **s3_loader.py**
-2. **simulate_image_streaming.py** simulates edge-device behavior of camera-trap sending data directly to an S3 Bucket. The images sent are all from the Spatiotemporal Wildlfe Dataset.
-### files
-This contains PDFs of written project deliverables such as the project Proposal and Interim report.
-### utils
-1. **download_dataset.py** downloads the Spatiotemporal Wildlfe Dataset from Kaggle using its API. *Ensure you have generated your kaggle API token before running anything!*
-2. **provision_resources.py** contains all the function used to provision AWS resources required for all five stages of the architecture.
-3. **clean_up.py** contains all functions usved to "clean up" after ourselves after resources have been provisioned. As we are using the Free-tier of AWS, this ensures that we are not charged for extended use of provisioned resources
-### config.yaml
-This config file is used to populate different parameters in variables within `main()`. **NOTE:** `USER_INFO` *must be filled out with **your** user name, region, and preferred email for SNS notifications*
-### main
-Contains all function calls in the logical order to provision resources and run the simulation. If you would like the resources to be deleted after the program runs, then you must ensure `delete_resources` is not commented out.
-## How to Use
 
