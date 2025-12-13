@@ -33,7 +33,7 @@ USER_INFO:
 
 5.  In Amazon EventBridge --> Rules, ensure the following rules are **endabled**: BatchNotifierRule, IngestionLoggerRule, and CreateGeoJSON.
 
-6. In Amazon SageMaker AI, Under "Deployments & Inference" --> Endpoints --> Create Endpoint. Name the Endpoint "yolov8s". For Enddpoint Configuration choose "yolov8-prod-config" (DO NOT PICK SERVERLESS). Press Create Endpoint and wait for a couple of minutes for the endpoint to be created.
+6. In Amazon SageMaker AI, Under "Deployments & Inference" --> Endpoints --> Create Endpoint. Name the Endpoint "yolov8s". For Enddpoint Configuration choose "yolov8-prod-config". Press Create Endpoint and wait for a couple of minutes for the endpoint to be created.
 
 7. **Run main()** - Now that you have completed the steps above, you should be able to run `main()` to run the simulation! You will get a email to confirm your SNS subscription. Accept it so you can get notifications of image uploads and classifications.
 
@@ -47,5 +47,6 @@ USER_INFO:
 
 
 9. **IMPORTANT - Clean Up** - After you are done testing the pipeline, go back to Amazon SageMaker AI go to Deployments & Inference --> Endpoints and delete the endpoint you created. This is a provisioned sagemaker endpoint so it cost money to leave up an running. **Be sure to delete it after you are done with your viewing or testing of the pipeline**. ENSURE YOU LEAVE ENDPOINT CONFIGURATIONS AND DEPLOYABLE MODELS AS IS. DO NOT TOUCH.
+
 
 
