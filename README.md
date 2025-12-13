@@ -44,6 +44,14 @@ USER_INFO:
   - artifacts-for-report will have two files:
     - `wildlife_predictions_FLATTENED.json` -> this is use for QuickSight/Power BI to ingest the longitudes and latitudes of where images were taken. Ideally, it would have been in QuickSight, as we were having access issues we pivoted to Power BI. A Power BI file of result will be includd in repo to download and view within your own PowerBI desktop application. Will also include an image of resulting report in the repo.
     - `wildlife_predictions.geojson` -> this used for a web map
+  - The 'index.html' file displays the prediction results as a web map. You can view it locally by starting a server with the command - 
+  ```bash
+  python3 -m http.server 8000
+  ```
+  - use this url to view the visualization
+     http://localhost:8000/index.html
+  
+ 
 
 
 9. **IMPORTANT - Clean Up** - After you are done testing the pipeline, go back to Amazon SageMaker AI go to Deployments & Inference --> Endpoints and delete the endpoint you created. This is a provisioned sagemaker endpoint so it cost money to leave up an running. **Be sure to delete it after you are done with your viewing or testing of the pipeline**. ENSURE YOU LEAVE ENDPOINT CONFIGURATIONS AND DEPLOYABLE MODELS AS IS. DO NOT TOUCH.
