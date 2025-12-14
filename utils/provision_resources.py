@@ -226,29 +226,52 @@ def attach_passrole_policy(user_name: str):
 # Deploys Ingestion Logger Lambda Function for Stage 1
 # logs the ingestion of images into S3 into a database
 
-def deploy_lambda_ingestion_logger(role_arn,table_name):
+# from botocore.exceptions import ClientError  # this is already at the top of file
+
+def deploy_lambda_ingestion_logger(role_arn, table_name):
+    """
+    Deploys (or reuses) the IngestionLogger Lambda function for Stage 1.
+    If the function already exists, it reuses the existing one instead of failing.
+    """
     lambda_client = get_aws_client("lambda")
 
     with open("ingestion_logger.zip", "rb") as f:
         zipped_code = f.read()
-    
-    response = lambda_client.create_function(
-        FunctionName="IngestionLogger",
-        Runtime="python3.12",
-        Role=role_arn,
-        Handler="ingestion_logger.lambda_handler",
-        Code={"ZipFile": zipped_code},
-        Timeout=30,
-        MemorySize=128,
-        Environment ={
-            "Variables": {
-                "TABLE_NAME": table_name
-            }
-        }
-    )
 
-    print(response)
-    return(response['FunctionName'],response['FunctionArn'])
+    try:
+        # Try to create the Lambda function
+        response = lambda_client.create_function(
+            FunctionName="IngestionLogger",
+            Runtime="python3.12",
+            Role=role_arn,
+            Handler="ingestion_logger.lambda_handler",
+            Code={"ZipFile": zipped_code},
+            Timeout=30,
+            MemorySize=128,
+            Environment={
+                "Variables": {
+                    "TABLE_NAME": table_name
+                }
+            }
+        )
+        print("Created Lambda function: IngestionLogger")
+
+        fn_name = response["FunctionName"]
+        fn_arn = response["FunctionArn"]
+
+    except ClientError as e:
+        # If the function already exists, reuse it instead of failing
+        if e.response["Error"]["Code"] == "ResourceConflictException":
+            print("Lambda function 'IngestionLogger' already exists. Using existing function.")
+            cfg = lambda_client.get_function(FunctionName="IngestionLogger")["Configuration"]
+            fn_name = cfg["FunctionName"]
+            fn_arn = cfg["FunctionArn"]
+        else:
+            # Any other error should still raise
+            raise
+
+    return fn_name, fn_arn
+
 
 def create_s3_lambda_trigger(bucket_name, function_arn, function_name):
     s3 = get_aws_client("s3")
@@ -302,55 +325,54 @@ def add_email_to_sns(topic_arn, email_address):
 
     print(f"Email subscription created. Account holder of {email_address} must confirm subscription")
 
-def deploy_lambda_image_event_classifier(role_arn, table_name):
-    lambda_client = get_aws_client("lambda")
-
-    with open("image_event_classifier.zip", "rb") as f:
-        zipped_code = f.read()
-    
-    response = lambda_client.create_function(
-        FunctionName="ImageEventClassifier",
-        Runtime="python3.12",
-        Role=role_arn,
-        Handler="image_event_classifier.lambda_handler",
-        Code={"ZipFile": zipped_code},
-        Timeout=30,
-        MemorySize=128,
-        Environment ={
-            "Variables": {
-                "TABLE_NAME": table_name,
-                "ENDPOINT_NAME": 1
-            }
-        }
-        )
-
 # Deploys Batch notifier Lambda Function for Stage 1
 # Notifies users the images that were uploaded to bucket within a 5 min window
 
-def deploy_lambda_batch_notifier(role_arn, sns_topic_arn, table_name):
+def deploy_lambda_batch_notifier(role_arn, topic_arn, table_name):
+    """
+    Deploys (or reuses) the BatchNotifier Lambda function for Stage 1.
+    If the function already exists, it reuses the existing one instead of failing.
+    """
     lambda_client = get_aws_client("lambda")
 
     with open("batch_notifier.zip", "rb") as f:
         zipped_code = f.read()
-    
-    response = lambda_client.create_function(
-        FunctionName="BatchNotifier",
-        Runtime="python3.12",
-        Role=role_arn,
-        Handler="batch_notifier.lambda_handler",
-        Code={"ZipFile": zipped_code},
-        Timeout=30,
-        MemorySize=128,
-        Environment ={
-            "Variables": {
-                "SNS_TOPIC_ARN":sns_topic_arn,
-                "TABLE_NAME": table_name
-            }
-        }
-        )
 
-    print(response)
-    return(response['FunctionName'],response['FunctionArn'])
+    try:
+        # Try to create the Lambda function
+        response = lambda_client.create_function(
+            FunctionName="BatchNotifier",
+            Runtime="python3.12",
+            Role=role_arn,
+            Handler="batch_notifier.lambda_handler",
+            Code={"ZipFile": zipped_code},
+            Timeout=30,
+            MemorySize=128,
+            Environment={
+                "Variables": {
+                    "SNS_TOPIC_ARN": topic_arn,
+                    "TABLE_NAME": table_name
+                }
+            }
+        )
+        print("Created Lambda function: BatchNotifier")
+
+        fn_name = response["FunctionName"]
+        fn_arn = response["FunctionArn"]
+
+    except ClientError as e:
+        # If the function already exists, reuse it instead of failing
+        if e.response["Error"]["Code"] == "ResourceConflictException":
+            print("Lambda function 'BatchNotifier' already exists. Using existing function.")
+            cfg = lambda_client.get_function(FunctionName="BatchNotifier")["Configuration"]
+            fn_name = cfg["FunctionName"]
+            fn_arn = cfg["FunctionArn"]
+        else:
+            # Any other error should still raise
+            raise
+
+    return fn_name, fn_arn
+
 
 
 
@@ -367,15 +389,38 @@ def create_eventBridge_rule(name, rate):
 
 #Gives the EventBridge Role permissions to invoke a Lambda function
 
-def give_eventBridge_permission(lambda_func_name, statement_id, action, principal, rule):
+# from botocore.exceptions import ClientError  # this should already be near top of file
+
+def give_eventBridge_permission(function_name, statement_id, action, principal, source_arn):
+    """
+    Grants EventBridge permission to invoke the given Lambda function.
+    If the same statement_id already exists, it prints a message and skips instead of failing.
+    """
     lambda_client = get_aws_client("lambda")
-    lambda_client.add_permission(
-        FunctionName=lambda_func_name,
-        StatementId=statement_id,
-        Action=action,
-        Principal=principal,
-        SourceArn=rule["RuleArn"]
-    )
+
+    try:
+        lambda_client.add_permission(
+            FunctionName=function_name,
+            StatementId=statement_id,
+            Action=action,
+            Principal=principal,
+            SourceArn=source_arn,
+        )
+        print(
+            f"Added permission '{statement_id}' for Lambda '{function_name}' "
+            f"with principal '{principal}'."
+        )
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "ResourceConflictException":
+            # Permission already exists — this is fine on reruns
+            print(
+                f"Permission '{statement_id}' already exists on Lambda "
+                f"'{function_name}'. Skipping add_permission."
+            )
+        else:
+            # Any other error should still surface
+            raise
+
 
 # Attaches the lambda target to the EventBridge Rule
 

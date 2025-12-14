@@ -211,3 +211,26 @@ data/
 temp/
 
 aws_auth.yaml
+# secrets
+aws_auth.yaml
+*.pem
+.kaggle/
+kaggle.json
+
+# local artifacts
+*.zip
+*.jpg
+*.jpeg
+*.png
+*.pdf
+*.log
+
+# model weights / artifacts
+Model/*.pt
+Model/*.tar.gz
+**/model.tar.gz
+**/*.pt
+
+# temp json files
+expr.json
+name.json
